@@ -1,0 +1,1045 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Presentación académica sobre Gradio y dashboards interactivos.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='26' fill='%235b4cff'/%3E%3Ccircle cx='32' cy='32' r='10' fill='%23f5743c'/%3E%3C/svg%3E">
+  <title>Gradio — Presentación interactiva</title>
+  <style>
+    :root {
+      --paper: #f3f4ee;
+      --paper-deep: #e8e9df;
+      --ink: #151a2e;
+      --muted: #5c6275;
+      --violet: #5b4cff;
+      --violet-soft: #dedaff;
+      --orange: #f5743c;
+      --line: #c9cbd0;
+      --white: #fffefa;
+      --shadow: 0 24px 70px rgb(21 26 46 / 15%);
+      --display: Bahnschrift, "Aptos Display", "Segoe UI Variable Display", sans-serif;
+      --body: Aptos, "Segoe UI Variable Text", "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--ink);
+      color: var(--ink);
+      font-family: var(--body);
+    }
+
+    button, a { font: inherit; }
+    a { color: inherit; }
+
+    .deck {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      isolation: isolate;
+      background:
+        linear-gradient(90deg, rgb(255 255 255 / 3%) 1px, transparent 1px) 0 0 / 34px 34px,
+        linear-gradient(rgb(255 255 255 / 3%) 1px, transparent 1px) 0 0 / 34px 34px,
+        var(--ink);
+    }
+
+    .slide {
+      position: absolute;
+      inset: clamp(12px, 2vw, 28px) clamp(12px, 3vw, 48px);
+      display: grid;
+      grid-template-columns: 78px minmax(0, 1fr);
+      overflow: hidden;
+      border-radius: 10px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      visibility: hidden;
+      opacity: 0;
+      transform: translateX(28px);
+      transition: opacity 260ms ease, transform 260ms ease, visibility 260ms;
+    }
+
+    .slide.active {
+      visibility: visible;
+      opacity: 1;
+      transform: translateX(0);
+      z-index: 2;
+    }
+
+    .rail {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 28px 0 22px;
+      color: var(--white);
+      background: var(--violet);
+    }
+
+    .rail::after {
+      content: "";
+      position: absolute;
+      top: 70px;
+      bottom: 58px;
+      width: 1px;
+      background: rgb(255 255 255 / 45%);
+    }
+
+    .rail-mark {
+      position: relative;
+      z-index: 1;
+      width: 18px;
+      height: 18px;
+      border: 4px solid var(--white);
+      border-radius: 50%;
+      background: var(--orange);
+    }
+
+    .rail-number {
+      position: relative;
+      z-index: 1;
+      padding: 7px 5px;
+      background: var(--violet);
+      font: 650 17px/1 var(--display);
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+    }
+
+    .slide-body {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      padding: clamp(28px, 5vw, 78px) clamp(30px, 6vw, 96px) clamp(62px, 7vh, 88px);
+      overflow: auto;
+    }
+
+    .slide-body::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 180px;
+      height: 8px;
+      background: var(--orange);
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+    h1, h2, h3 { font-family: var(--display); }
+
+    h1 {
+      max-width: 930px;
+      margin-bottom: 28px;
+      font-size: clamp(50px, 7.3vw, 112px);
+      line-height: .91;
+      letter-spacing: -.055em;
+    }
+
+    h2 {
+      max-width: 920px;
+      margin-bottom: clamp(28px, 4vh, 52px);
+      font-size: clamp(36px, 5.1vw, 76px);
+      line-height: .96;
+      letter-spacing: -.045em;
+    }
+
+    h3 {
+      margin-bottom: 10px;
+      font-size: clamp(20px, 2vw, 30px);
+      line-height: 1.05;
+      letter-spacing: -.025em;
+    }
+
+    p, li {
+      font-size: clamp(17px, 1.55vw, 25px);
+      line-height: 1.42;
+    }
+
+    .lead {
+      max-width: 760px;
+      color: var(--muted);
+      font-size: clamp(22px, 2.3vw, 34px);
+      line-height: 1.38;
+    }
+
+    .kicker {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      color: var(--violet);
+      font-weight: 750;
+      font-size: clamp(16px, 1.4vw, 21px);
+    }
+
+    .kicker::before {
+      content: "";
+      width: 38px;
+      height: 4px;
+      background: var(--orange);
+    }
+
+    .signal {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      width: min(870px, 100%);
+      margin-top: auto;
+      padding-top: 34px;
+    }
+
+    .signal-node {
+      flex: 0 0 auto;
+      width: 16px;
+      height: 16px;
+      border: 4px solid var(--violet);
+      border-radius: 50%;
+      background: var(--paper);
+    }
+
+    .signal-line {
+      flex: 1;
+      height: 3px;
+      background: linear-gradient(90deg, var(--violet), var(--orange));
+    }
+
+    .signal-label {
+      margin-left: 12px;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 28px;
+      margin-top: auto;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .author-list {
+      display: grid;
+      gap: 5px;
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: clamp(16px, 1.3vw, 20px);
+    }
+
+    .decision-grid,
+    .tech-stack,
+    .risk-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+      margin: auto 0;
+    }
+
+    .decision-item,
+    .tech-item,
+    .risk-item {
+      padding: 24px 20px;
+      border-top: 7px solid var(--violet);
+      background: var(--white);
+    }
+
+    .decision-item:nth-child(even),
+    .tech-item:nth-child(even),
+    .risk-item:nth-child(even) { border-color: var(--orange); }
+
+    .decision-item p,
+    .tech-item p,
+    .risk-item p { margin-bottom: 0; color: var(--muted); font-size: clamp(15px, 1.2vw, 19px); }
+
+    .number-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      margin: 6px 0 34px;
+      border-top: 2px solid var(--ink);
+      border-bottom: 2px solid var(--ink);
+    }
+
+    .number-strip div { padding: 22px 18px; border-right: 1px solid var(--line); }
+    .number-strip div:last-child { border-right: 0; }
+    .number-strip strong { display: block; font: 700 clamp(31px, 4vw, 58px)/1 var(--display); color: var(--violet); }
+    .number-strip span { color: var(--muted); font-size: 15px; }
+
+    .title-mark {
+      position: absolute;
+      right: clamp(40px, 8vw, 120px);
+      bottom: clamp(60px, 9vh, 120px);
+      width: clamp(120px, 16vw, 250px);
+      aspect-ratio: 1;
+      border: clamp(18px, 2.4vw, 36px) solid var(--violet);
+      border-radius: 50%;
+    }
+
+    .title-mark::before,
+    .title-mark::after {
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+    }
+
+    .title-mark::before {
+      inset: 20%;
+      background: var(--orange);
+    }
+
+    .title-mark::after {
+      top: 42%;
+      left: -44%;
+      width: 76%;
+      height: 10px;
+      border-radius: 0;
+      background: var(--ink);
+    }
+
+    .tool-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: clamp(15px, 1.35vw, 21px);
+    }
+
+    .tool-table th,
+    .tool-table td {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .tool-table th {
+      color: var(--muted);
+      font-weight: 650;
+    }
+
+    .tool-table tr.focus-row {
+      color: var(--white);
+      background: var(--violet);
+    }
+
+    .tool-table tr.focus-row td { border-color: transparent; }
+
+    .definition {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr);
+      gap: clamp(30px, 5vw, 80px);
+      align-items: center;
+    }
+
+    .quote {
+      padding-left: 28px;
+      border-left: 8px solid var(--orange);
+      font: 600 clamp(28px, 3.6vw, 54px)/1.15 var(--display);
+      letter-spacing: -.025em;
+    }
+
+    .fact-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .fact-list li {
+      padding: 16px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .fact-list strong {
+      display: block;
+      color: var(--violet);
+      font-family: var(--display);
+      font-size: 1.15em;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      align-items: center;
+      gap: 0;
+      margin: auto 0;
+    }
+
+    .flow-item {
+      position: relative;
+      min-height: 180px;
+      padding: 30px 24px;
+      border: 2px solid var(--ink);
+      background: var(--white);
+    }
+
+    .flow-item:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      z-index: 2;
+      top: 50%;
+      right: -28px;
+      width: 54px;
+      height: 6px;
+      background: var(--orange);
+    }
+
+    .flow-item:nth-child(even) {
+      color: var(--white);
+      background: var(--violet);
+      transform: translateY(26px);
+    }
+
+    .flow-item p { margin-bottom: 0; font-size: clamp(15px, 1.3vw, 20px); }
+
+    .api-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 28px;
+      margin: auto 0;
+    }
+
+    .api-column {
+      padding: 26px 0 0;
+      border-top: 8px solid var(--violet);
+    }
+
+    .api-column:nth-child(2) { border-color: var(--orange); }
+    .api-column:nth-child(3) { border-color: var(--ink); }
+    .api-column p { color: var(--muted); }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag {
+      padding: 6px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-size: 15px;
+    }
+
+    .code-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(260px, .8fr);
+      gap: clamp(28px, 5vw, 72px);
+      align-items: center;
+    }
+
+    pre {
+      margin: 0;
+      padding: clamp(22px, 3vw, 42px);
+      overflow: auto;
+      border-left: 10px solid var(--orange);
+      background: var(--ink);
+      color: #f8f7f2;
+      font: 500 clamp(14px, 1.35vw, 21px)/1.6 "Cascadia Code", Consolas, monospace;
+      tab-size: 2;
+    }
+
+    .kw { color: #b9afff; }
+    .fn { color: #ff9b6c; }
+    .st { color: #b8df9f; }
+    .cm { color: #9298aa; }
+
+    .steps {
+      margin: 0;
+      padding-left: 1.3em;
+    }
+
+    .steps li { margin-bottom: 14px; }
+    .steps li::marker { color: var(--orange); font-weight: 800; }
+
+    .demo-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(230px, .4fr);
+      gap: 26px;
+      min-height: 0;
+      flex: 1;
+    }
+
+    .browser {
+      display: flex;
+      flex-direction: column;
+      min-height: 320px;
+      overflow: hidden;
+      border: 2px solid var(--ink);
+      background: white;
+    }
+
+    .browser-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      color: var(--white);
+      background: var(--ink);
+      font-size: 14px;
+    }
+
+    .browser-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--orange); }
+    .browser-dot:nth-child(2) { background: #f2c94c; }
+    .browser-dot:nth-child(3) { background: #68c18c; }
+    .browser-url { margin-left: 8px; color: #c5c9d5; }
+    .browser iframe { flex: 1; width: 100%; border: 0; background: white; }
+
+    .demo-notes {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 4px 0;
+    }
+
+    .demo-notes ul { margin: 0; padding-left: 1.15em; }
+    .demo-notes li { margin-bottom: 10px; font-size: clamp(15px, 1.25vw, 19px); }
+
+    .action-link {
+      display: inline-flex;
+      justify-content: center;
+      padding: 12px 16px;
+      border: 2px solid var(--ink);
+      color: var(--ink);
+      background: var(--orange);
+      text-decoration: none;
+      font-weight: 750;
+    }
+
+    .balance {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(34px, 7vw, 110px);
+      margin: auto 0;
+    }
+
+    .balance h3 { padding-bottom: 14px; border-bottom: 7px solid var(--violet); }
+    .balance > div:last-child h3 { border-color: var(--orange); }
+    .balance ul { padding-left: 1.2em; }
+    .balance li { margin-bottom: 12px; }
+
+    .deploy-line {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      margin: auto 0 36px;
+      border-top: 3px solid var(--ink);
+    }
+
+    .deploy-step {
+      position: relative;
+      padding: 30px 32px 0 0;
+    }
+
+    .deploy-step::before {
+      content: "";
+      position: absolute;
+      top: -10px;
+      left: 0;
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: var(--violet);
+    }
+
+    .deploy-step:nth-child(2)::before { background: var(--orange); }
+    .deploy-step p { color: var(--muted); }
+
+    .command {
+      display: inline-block;
+      padding: 12px 16px;
+      color: var(--white);
+      background: var(--ink);
+      font: 600 clamp(14px, 1.25vw, 19px)/1.4 "Cascadia Code", Consolas, monospace;
+    }
+
+    .conclusion {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(260px, .9fr);
+      gap: 70px;
+      align-items: center;
+      margin: auto 0;
+    }
+
+    .verdict {
+      font: 650 clamp(32px, 4.2vw, 64px)/1.12 var(--display);
+      letter-spacing: -.035em;
+    }
+
+    .when-list {
+      border-left: 3px solid var(--ink);
+      padding-left: 26px;
+    }
+
+    .when-list p { margin-bottom: 20px; }
+
+    .source-list {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 40px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .source-list a {
+      display: block;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+      color: var(--ink);
+      text-decoration-color: var(--orange);
+      text-underline-offset: 4px;
+      font-size: clamp(15px, 1.25vw, 20px);
+    }
+
+    .controls {
+      position: fixed;
+      right: clamp(24px, 4vw, 64px);
+      bottom: clamp(23px, 4vh, 48px);
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 7px;
+      border: 1px solid rgb(21 26 46 / 12%);
+      border-radius: 999px;
+      background: rgb(247 247 242 / 90%);
+      box-shadow: 0 8px 26px rgb(21 26 46 / 14%);
+      backdrop-filter: blur(10px);
+    }
+
+    .control-button {
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border: 1px solid rgb(255 255 255 / 35%);
+      border-radius: 50%;
+      color: var(--white);
+      background: rgb(21 26 46 / 82%);
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+    }
+
+    .control-button:hover { background: var(--violet); }
+    .control-button:focus-visible,
+    a:focus-visible { outline: 3px solid var(--orange); outline-offset: 3px; }
+
+    .counter {
+      min-width: 68px;
+      color: var(--ink);
+      text-align: center;
+      font: 650 15px/1 var(--display);
+    }
+
+    .progress {
+      position: fixed;
+      z-index: 12;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      height: 5px;
+      background: rgb(255 255 255 / 12%);
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 10%;
+      background: var(--orange);
+      transition: width 220ms ease;
+    }
+
+    .keyboard-hint {
+      position: fixed;
+      z-index: 10;
+      left: clamp(110px, 10vw, 170px);
+      bottom: clamp(30px, 4vh, 52px);
+      padding: 7px 11px;
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgb(247 247 242 / 88%);
+      box-shadow: 0 5px 18px rgb(21 26 46 / 10%);
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .slide { grid-template-columns: 48px minmax(0, 1fr); }
+      .slide-body { padding: 28px 24px 72px; }
+      .definition, .code-layout, .demo-layout, .conclusion { grid-template-columns: 1fr; }
+      .flow { grid-template-columns: 1fr 1fr; gap: 12px; }
+      .flow-item:nth-child(even) { transform: none; }
+      .flow-item:not(:last-child)::after { display: none; }
+      .api-grid { grid-template-columns: 1fr; }
+      .decision-grid, .tech-stack, .risk-grid { grid-template-columns: 1fr 1fr; }
+      .number-strip { grid-template-columns: 1fr 1fr; }
+      .balance { gap: 30px; }
+      .title-mark { opacity: .18; }
+      .keyboard-hint { display: none; }
+      .browser { min-height: 290px; }
+    }
+
+    @media (max-width: 620px) {
+      .slide { inset: 6px; grid-template-columns: 1fr; }
+      .rail { display: none; }
+      h1 { font-size: 48px; }
+      h2 { font-size: 38px; }
+      .tool-table th:nth-child(3), .tool-table td:nth-child(3) { display: none; }
+      .balance, .source-list, .deploy-line { grid-template-columns: 1fr; }
+      .decision-grid, .tech-stack, .risk-grid, .number-strip { grid-template-columns: 1fr; }
+      .controls { right: 16px; bottom: 18px; }
+      .demo-layout { display: block; }
+      .demo-notes { margin-top: 20px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+
+    @media print {
+      html, body { height: auto; overflow: visible; background: white; }
+      .deck { height: auto; background: white; }
+      .slide {
+        position: relative;
+        inset: auto;
+        width: 100vw;
+        height: 100vh;
+        visibility: visible;
+        opacity: 1;
+        transform: none;
+        break-after: page;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .controls, .progress, .keyboard-hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="deck" aria-live="polite">
+    <section class="slide active" aria-label="Portada">
+      <aside class="rail"><span class="rail-mark"></span><span class="rail-number">Gradio</span></aside>
+      <div class="slide-body">
+        <p class="kicker">CC3084 · Data Science · Sección 10 · Grupo 6</p>
+        <h1>Del código a una interfaz en minutos.</h1>
+        <p class="lead">Gradio convierte funciones de Python, modelos y APIs en experiencias web que cualquiera puede probar.</p>
+        <div class="author-list">
+          <strong>Universidad del Valle de Guatemala · Segundo semestre de 2026</strong>
+          <span>Pablo Daniel Barillas Moreno · Carné No. 222193</span>
+          <span>Carlos Aldana · Carné No. 23394</span>
+        </div>
+        <div class="title-mark" aria-hidden="true"></div>
+        <div class="meta"><span>Investigación, implementación y evaluación</span><span>Octubre de 2026</span></div>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Concepto de dashboard interactivo">
+      <aside class="rail"><span class="rail-mark"></span><span class="rail-number">Dashboard</span></aside>
+      <div class="slide-body">
+        <p class="kicker">Más que una colección de gráficas</p>
+        <h2>De reporte a sistema de decisión.</h2>
+        <div class="decision-grid">
+          <article class="decision-item"><h3>Observar</h3><p>KPIs, tendencias, distribuciones y anomalías presentan el estado del sistema.</p></article>
+          <article class="decision-item"><h3>Preguntar</h3><p>Filtros y selectores permiten probar hipótesis sin reescribir el análisis.</p></article>
+          <article class="decision-item"><h3>Comparar</h3><p>Segmentos, periodos y metas vuelven visibles las diferencias importantes.</p></article>
+          <article class="decision-item"><h3>Actuar</h3><p>La exportación y los hallazgos convierten la exploración en una decisión comunicable.</p></article>
+        </div>
+        <div class="signal" aria-hidden="true"><span class="signal-node"></span><span class="signal-line"></span><span class="signal-node"></span><span class="signal-label">datos → interacción → interpretación</span></div>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Panorama de herramientas">
+      <aside class="rail"><span class="rail-mark"></span><span class="rail-number">Panorama</span></aside>
+      <div class="slide-body">
+        <p class="kicker">No existe una única herramienta correcta</p>
+        <h2>Cinco caminos hacia un dashboard.</h2>
+        <table class="tool-table">
+          <thead><tr><th>Herramienta</th><th>Lenguaje</th><th>Mejor encaje</th></tr></thead>
+          <tbody>
+            <tr class="focus-row"><td><strong>Gradio</strong></td><td>Python + clientes JS</td><td>Demos de IA, modelos, funciones y APIs</td></tr>
+            <tr><td><strong>Streamlit</strong></td><td>Python</td><td>Aplicaciones de datos rápidas</td></tr>
+            <tr><td><strong>Dash</strong></td><td>Python</td><td>Analítica y gráficas Plotly con callbacks</td></tr>
+            <tr><td><strong>Panel</strong></td><td>Python</td><td>Integración profunda con PyData/HoloViz</td></tr>
+            <tr><td><strong>Shiny</strong></td><td>R y Python</td><td>Aplicaciones con programación reactiva</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Definición de Gradio">
+      <aside class="rail"><span class="rail-mark"></span><span class="rail-number">Definición</span></aside>
+      <div class="slide-body">
+        <p class="kicker">Tema principal</p>
+        <h2>¿Qué es Gradio?</h2>
+        <div class="definition">
+          <div class="quote">Un paquete open source que envuelve lógica de Python con una interfaz web interactiva.</div>
+          <ul class="fact-list">
+            <li><strong>Python primero</strong>La interfaz y la lógica viven juntas.</li>
+            <li><strong>Sin frontend obligatorio</strong>No exige JavaScript o CSS para comenzar.</li>
+            <li><strong>Apache 2.0</strong>Proyecto abierto mantenido en GitHub.</li>
+            <li><strong>Python 3.10+</strong>Requisito de la versión actual.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Arquitectura">
+      <aside class="rail"><span class="rail-mark"></span><span class="rail-number">Arquitectura</span></aside>
+      <div class="slide-body">
+        <p class="kicker">El recorrido de una interacción</p>
+        <h2>Una señal, cuatro estaciones.</h2>
+        <div class="flow">
+          <article class="flow-item"><h3>Usuario</h3><p>Cambia un filtro, escribe un texto o carga un archivo.</p></article>
+          <article class="flow-item"><h3>Componente</h3><p>Dropdown, Slider, Image, Audio, Plot o Dataframe.</p></article>
+          <article class="flow-item"><h3>Función Python</h3><p>Procesa datos, consulta una API o ejecuta un modelo.</p></article>
+          <article class="flow-item"><h3>Resultado</h3><p>La interfaz actualiza texto, tabla, gráfica o multimedia.</p></article>
+        </div>
+        <div class="signal" aria-hidden="true"><span class="signal-node"></span><span class="signal-line"></span><span class="signal-node"></span><span class="signal-label">evento → función → salida</span></div>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Formas de desarrollar">
+      <aside class="rail"><span class="rail-mark"></span><span class="rail-number">Desarrollo</span></aside>
+      <div class="slide-body">
+        <p class="kicker">Tres niveles de abstracción</p>
+        <h2>De una función simple a una app completa.</h2>
+        <div class="api-grid">
+          <article class="api-column">
+            <h3>Interface</h3>
+            <p>Envuelve una función con entradas y salidas. Ideal para el primer prototipo.</p>
+            <div class="tags"><span class="tag">fn</span><span class="tag">inputs</span><span class="tag">outputs</span></div>
+          </article>
+          <article class="api-column">
+            <h3>Blocks</h3>
+            <p>Controla layout, eventos y flujos entre múltiples componentes.</p>
+            <div class="tags"><span class="tag">Row</span><span class="tag">Column</span><span class="tag">click</span><span class="tag">change</span></div>
+          </article>
+          <article class="api-column">
+            <h3>ChatInterface</h3>
+            <p>Resuelve el patrón conversacional con historial y streaming.</p>
+            <div class="tags"><span class="tag">chatbot</span><span class="tag">streaming</span><span class="tag">multimodal</span></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Capacidades técnicas">
+      <aside class="rail"><span class="rail-mark"></span><span class="rail-number">Sistema</span></aside>
+      <div class="slide-body">
+        <p class="kicker">Lo que ocurre detrás de la interfaz</p>
+        <h2>Estado, cola y API integrados.</h2>
+        <div class="tech-stack">
+          <article class="tech-item"><h3>Eventos</h3><p><code>click</code>, <code>change</code> y <code>load</code> conectan gestos con funciones de Python.</p></article>
+          <article class="tech-item"><h3>Estado</h3><p>Puede ser global, por sesión o persistente en el navegador según el caso.</p></article>
+          <article class="tech-item"><h3>Cola</h3><p>Los límites de concurrencia protegen modelos pesados y recursos compartidos.</p></article>
+          <article class="tech-item"><h3>Clientes</h3><p>Las apps pueden consumirse desde Python o JavaScript como endpoints programáticos.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Ejemplo básico">
+      <aside class="rail"><span class="rail-mark"></span><span class="rail-number">Código</span></aside>
+      <div class="slide-body">
+        <p class="kicker">Hello World</p>
+        <h2>Una interfaz en nueve líneas.</h2>
+        <div class="code-layout">
+          <pre><code><span class="kw">import</span> gradio <span class="kw">as</span> gr
+
+<span class="kw">def</span> <span class="fn">saludar</span>(nombre, intensidad):
+    <span class="kw">return</span> <span class="st">f"Hola, {nombre}"</span> + <span class="st">"!"</span> * intensidad
+
+demo = gr.Interface(
+    fn=saludar,
+    inputs=[<span class="st">"text"</span>, <span class="st">"slider"</span>],
+    outputs=<span class="st">"text"</span>,
+)
+demo.launch()</code></pre>
+          <ol class="steps">
+            <li>Escribir una función normal.</li>
+            <li>Declarar entradas y salidas.</li>
+            <li>Ejecutar <code>launch()</code>.</li>
+            <li>Abrir <code>127.0.0.1:7860</code>.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Demo del grupo">
+      <aside class="rail"><span class="rail-mark"></span><span class="rail-number">Demo</span></aside>
+      <div class="slide-body">
+        <p class="kicker">Ejemplo construido por el grupo</p>
+        <h2>Dashboard de ventas en vivo.</h2>
+        <div class="demo-layout">
+          <div class="browser">
+            <div class="browser-bar"><span class="browser-dot"></span><span class="browser-dot"></span><span class="browser-dot"></span><span class="browser-url">127.0.0.1:7860</span></div>
+            <iframe src="http://127.0.0.1:7860" title="Dashboard Gradio del grupo" loading="lazy"></iframe>
+          </div>
+          <div class="demo-notes">
+            <ul>
+              <li>Filtros por región, categoría, canal y periodo</li>
+              <li>Cinco KPIs y meta ajustable</li>
+              <li>Cuatro visualizaciones coordinadas</li>
+              <li>Hallazgos automáticos y exportación CSV</li>
+            </ul>
+            <a class="action-link" href="http://127.0.0.1:7860" target="_blank" rel="noreferrer">Abrir la demo</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Datos de la demostración">
+      <aside class="rail"><span class="rail-mark"></span><span class="rail-number">Datos</span></aside>
+      <div class="slide-body">
+        <p class="kicker">Conjunto sintético y reproducible</p>
+        <h2>Complejidad suficiente para explorar.</h2>
+        <div class="number-strip">
+          <div><strong>576</strong><span>observaciones</span></div>
+          <div><strong>12</strong><span>meses de 2026</span></div>
+          <div><strong>4 × 4</strong><span>regiones y categorías</span></div>
+          <div><strong>3</strong><span>canales comerciales</span></div>
+        </div>
+        <p class="lead">Ventas, costos, margen, unidades, pedidos y satisfacción se generan de forma determinista. La demo funciona sin API ni conexión externa y permite verificar cada cálculo.</p>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Ventajas y límites">
+      <aside class="rail"><span class="rail-mark"></span><span class="rail-number">Balance</span></aside>
+      <div class="slide-body">
+        <p class="kicker">Decisión informada</p>
+        <h2>Rápido no significa universal.</h2>
+        <div class="balance">
+          <div>
+            <h3>Lo que hace especialmente bien</h3>
+            <ul><li>Prototipa con muy poco código.</li><li>Acepta texto, imagen, audio, video y tablas.</li><li>Expone endpoints consumibles como API.</li><li>Facilita demostrar modelos de IA.</li></ul>
+          </div>
+          <div>
+            <h3>Lo que exige evaluar</h3>
+            <ul><li>Menor control visual que un frontend a medida.</li><li>Concurrencia y recursos en producción.</li><li>Autenticación, secretos y acceso a archivos.</li><li>Arquitectura para apps empresariales extensas.</li></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Publicación y comunidad">
+      <aside class="rail"><span class="rail-mark"></span><span class="rail-number">Publicación</span></aside>
+      <div class="slide-body">
+        <p class="kicker">Del equipo local a una audiencia</p>
+        <h2>Probar, compartir, publicar.</h2>
+        <div class="deploy-line">
+          <article class="deploy-step"><h3>Local</h3><p>Desarrollo y pruebas en la computadora.</p><span class="command">python app.py</span></article>
+          <article class="deploy-step"><h3>Temporal</h3><p>Enlace público para una demostración breve.</p><span class="command">python app.py --share</span></article>
+          <article class="deploy-step"><h3>Persistente</h3><p>Repositorio y despliegue en Hugging Face Spaces.</p><span class="command">gradio deploy</span></article>
+        </div>
+        <p class="lead">La comunidad vive en la documentación, GitHub, Discord y los miles de ejemplos publicados como Spaces.</p>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Seguridad y rendimiento">
+      <aside class="rail"><span class="rail-mark"></span><span class="rail-number">Producción</span></aside>
+      <div class="slide-body">
+        <p class="kicker">Antes de publicar</p>
+        <h2>Una demo pública también es un sistema.</h2>
+        <div class="risk-grid">
+          <article class="risk-item"><h3>Archivos</h3><p>Limitar <code>allowed_paths</code>, bloquear rutas sensibles y controlar tamaños de carga.</p></article>
+          <article class="risk-item"><h3>Acceso</h3><p>Añadir autenticación cuando los datos, modelos o resultados no sean públicos.</p></article>
+          <article class="risk-item"><h3>Concurrencia</h3><p>Ajustar la cola y los límites por evento según CPU, memoria o GPU disponibles.</p></article>
+          <article class="risk-item"><h3>Operación</h3><p>Registrar errores, fijar versiones, proteger secretos y probar bajo carga realista.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Conclusión">
+      <aside class="rail"><span class="rail-mark"></span><span class="rail-number">Conclusión</span></aside>
+      <div class="slide-body">
+        <p class="kicker">Criterio final</p>
+        <h2>¿Cuándo elegir Gradio?</h2>
+        <div class="conclusion">
+          <div class="verdict">Cuando el valor está en la función o el modelo y necesitamos que alguien lo pruebe hoy.</div>
+          <div class="when-list">
+            <p><strong>Sí:</strong> demos, prototipos, enseñanza, IA y herramientas internas.</p>
+            <p><strong>Evaluar:</strong> BI corporativo complejo, identidad visual rígida o gran escala.</p>
+          </div>
+        </div>
+        <div class="signal" aria-hidden="true"><span class="signal-node"></span><span class="signal-line"></span><span class="signal-node"></span><span class="signal-label">Idea → experiencia compartible</span></div>
+      </div>
+    </section>
+
+    <section class="slide" aria-label="Fuentes">
+      <aside class="rail"><span class="rail-mark"></span><span class="rail-number">Fuentes</span></aside>
+      <div class="slide-body">
+        <p class="kicker">Referencias oficiales</p>
+        <h2>Para continuar investigando.</h2>
+        <ul class="source-list">
+          <li><a href="https://www.gradio.app/guides/quickstart" target="_blank" rel="noreferrer">Gradio — Quickstart</a></li>
+          <li><a href="https://www.gradio.app/docs/gradio/blocks" target="_blank" rel="noreferrer">Gradio — Blocks</a></li>
+          <li><a href="https://www.gradio.app/guides/sharing-your-app" target="_blank" rel="noreferrer">Gradio — Sharing Your App</a></li>
+          <li><a href="https://www.gradio.app/guides/queuing" target="_blank" rel="noreferrer">Gradio — Queuing</a></li>
+          <li><a href="https://www.gradio.app/main/guides/state-in-blocks" target="_blank" rel="noreferrer">Gradio — State in Blocks</a></li>
+          <li><a href="https://www.gradio.app/guides/file-access" target="_blank" rel="noreferrer">Gradio — Security and File Access</a></li>
+          <li><a href="https://arxiv.org/abs/1906.02569" target="_blank" rel="noreferrer">Abid et al. — artículo original</a></li>
+          <li><a href="https://github.com/gradio-app/gradio" target="_blank" rel="noreferrer">Repositorio oficial en GitHub</a></li>
+          <li><a href="https://huggingface.co/docs/hub/spaces-sdks-gradio" target="_blank" rel="noreferrer">Hugging Face — Gradio Spaces</a></li>
+          <li><a href="https://docs.streamlit.io/" target="_blank" rel="noreferrer">Streamlit — Documentación</a></li>
+          <li><a href="https://dash.plotly.com/" target="_blank" rel="noreferrer">Plotly Dash — Documentación</a></li>
+          <li><a href="https://panel.holoviz.org/" target="_blank" rel="noreferrer">HoloViz Panel — Documentación</a></li>
+          <li><a href="https://shiny.posit.co/py/" target="_blank" rel="noreferrer">Posit — Shiny for Python</a></li>
+          <li><a href="https://discord.gg/feTf9x3ZSB" target="_blank" rel="noreferrer">Comunidad Gradio en Discord</a></li>
+        </ul>
+        <div class="meta"><span>Investigación completa: INVESTIGACION.md</span><span>Demo: app.py</span></div>
+      </div>
+    </section>
+  </main>
+
+  <p class="keyboard-hint">Usa ← →, espacio o los controles</p>
+  <nav class="controls" aria-label="Controles de la presentación">
+    <button class="control-button" id="prev" type="button" aria-label="Diapositiva anterior">←</button>
+    <span class="counter" id="counter">1 / 15</span>
+    <button class="control-button" id="next" type="button" aria-label="Diapositiva siguiente">→</button>
+  </nav>
+  <div class="progress" aria-hidden="true"><div class="progress-bar" id="progress"></div></div>
+
+  <script>
+    const slides = [...document.querySelectorAll('.slide')];
+    const counter = document.getElementById('counter');
+    const progress = document.getElementById('progress');
+    let current = Math.max(0, Math.min(slides.length - 1, Number(location.hash.replace('#slide-', '')) - 1 || 0));
+
+    function showSlide(index) {
+      current = (index + slides.length) % slides.length;
+      slides.forEach((slide, position) => {
+        const active = position === current;
+        slide.classList.toggle('active', active);
+        slide.setAttribute('aria-hidden', String(!active));
+      });
+      counter.textContent = `${current + 1} / ${slides.length}`;
+      progress.style.width = `${((current + 1) / slides.length) * 100}%`;
+      history.replaceState(null, '', `#slide-${current + 1}`);
+    }
+
+    document.getElementById('prev').addEventListener('click', () => showSlide(current - 1));
+    document.getElementById('next').addEventListener('click', () => showSlide(current + 1));
+
+    document.addEventListener('keydown', (event) => {
+      if (['ArrowRight', 'PageDown', ' '].includes(event.key)) {
+        event.preventDefault();
+        showSlide(current + 1);
+      }
+      if (['ArrowLeft', 'PageUp'].includes(event.key)) {
+        event.preventDefault();
+        showSlide(current - 1);
+      }
+      if (event.key === 'Home') showSlide(0);
+      if (event.key === 'End') showSlide(slides.length - 1);
+    });
+
+    let touchStart = null;
+    document.addEventListener('touchstart', event => touchStart = event.changedTouches[0].clientX, { passive: true });
+    document.addEventListener('touchend', event => {
+      if (touchStart === null) return;
+      const distance = event.changedTouches[0].clientX - touchStart;
+      if (Math.abs(distance) > 50) showSlide(current + (distance < 0 ? 1 : -1));
+      touchStart = null;
+    }, { passive: true });
+
+    showSlide(current);
+  </script>
+</body>
+</html>

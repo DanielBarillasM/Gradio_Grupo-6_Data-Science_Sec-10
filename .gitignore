@@ -3,6 +3,19 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# Project-local artifacts
+output/
+tmp/
+.playwright-cli/
+gradio_staging/
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.toc
+*.xdv
+
 # C extensions
 *.so
 
